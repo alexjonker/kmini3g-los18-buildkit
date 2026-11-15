@@ -10,8 +10,8 @@ Unofficial. Not affiliated with LineageOS or Samsung. Flash at your own risk.
 
 | Works | Not tested yet |
 |-------|----------------|
-| Boot, display, touch, setup wizard | Camera |
-| Correct screen density | Wi-Fi, Bluetooth, GPS |
+| Boot, display, touch, setup wizard, camera | |
+| Correct screen density, Wi-Fi | Bluetooth, GPS |
 | SELinux enforcing | Calls / mobile data |
 | | Sound, fingerprint, IR blaster |
 
