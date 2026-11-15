@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Local manifest: LineageOS 18.1 for Samsung Galaxy S5 mini (SM-G800H, kmini3g) -->
+<manifest>
+  <remote name="s3neo"   fetch="https://github.com/S3NEO"     revision="refs/heads/lineage-18.1" />
+  <remote name="muppets" fetch="https://github.com/TheMuppets" revision="refs/heads/lineage-18.1" />
+
+  <!-- Device -->
+  <project name="android_device_samsung_kmini3g" path="device/samsung/kmini3g" remote="s3neo" />
+  <project name="LineageOS/android_device_samsung_msm8226-common" path="device/samsung/msm8226-common" remote="github" />
+  <project name="LineageOS/android_device_samsung_qcom-common" path="device/samsung/qcom-common" remote="github" />
+
+  <!-- Kernel -->
+  <project name="LineageOS/android_kernel_samsung_msm8226" path="kernel/samsung/msm8226" remote="github" />
+
+  <!-- Vendor: common blobs from TheMuppets, kmini3g blobs from S3NEO -->
+  <project name="proprietary_vendor_samsung" path="vendor/samsung" remote="muppets" />
+  <project name="android_vendor_samsung_kmini3g" path="vendor/samsung/kmini3g" remote="s3neo" />
+
+  <!-- Other -->
+  <project name="LineageOS/android_hardware_samsung" path="hardware/samsung" remote="github" />
+</manifest>
