@@ -10,10 +10,9 @@ Unofficial. Not affiliated with LineageOS or Samsung. Flash at your own risk.
 
 | Works | Not tested yet |
 |-------|----------------|
-| Boot, display, touch, setup wizard, camera | |
-| Correct screen density, Wi-Fi | Bluetooth, GPS |
-| SELinux enforcing | Calls / mobile data |
-| | Sound, fingerprint, IR blaster |
+| Boot, display, touch, setup wizard, camera | Bluetooth, GPS |
+| Correct screen density, Wi-Fi | Calls / mobile data |
+| SELinux enforcing | Sound, fingerprint, IR blaster |
 
 Kernel: 3.4 (msm8226, LineageOS). Security patch level: 2024-02-05.
 
