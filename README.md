@@ -72,7 +72,13 @@ docker run --rm -it -v ./los18:/src -v ./los18-ccache:/ccache los18-builder bash
 The first install of this ROM needs a factory reset (also when coming from LineageOS 16/17
 or another ROM). Back up anything you need first.
 
-**TWRP:** Wipe → Advanced Wipe → Dalvik/ART Cache, Cache, Data, System → Install the zip → Reboot.
+**TWRP:** Wipe → Advanced Wipe → Dalvik/ART Cache, Cache, Data, System
+
+Upload the file with adb push:
+```bash
+adb push ./los18/out/target/product/kmini3g/lineage-18.1-*-UNOFFICIAL-kmini3g.zip /sdcard
+```
+Install the zip → Reboot.
 
 **LineageOS recovery:** Factory reset → Format data/factory reset, then Apply update →
 Apply from ADB, and on the PC:
