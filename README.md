@@ -10,9 +10,9 @@ Unofficial. Not affiliated with LineageOS or Samsung. Flash at your own risk.
 
 | Works | Not tested yet | Doesn't work |
 |-------|----------------|--------------|
-| Boot, display, touch, sound, setup wizard, camera | Bluetooth, GPS | Fingerprint (disabled in the build, see below) |
+| Boot, display, touch, sound, setup wizard, camera | Bluetooth, GPS | Fingerprint |
 | Correct screen density, Wi-Fi | Calls / mobile data | |
-| SELinux enforcing | IR blaster | |
+| SELinux enforcing, Magisk (root) | IR blaster | |
 
 Kernel: 3.4 (msm8226, LineageOS). Security patch level: 2024-02-05.
 
@@ -53,6 +53,7 @@ Add these to the `docker run` command as `-e NAME=value`:
 |--------|--------|
 | `JOBS=4` | Use 4 parallel jobs instead of all CPU cores. Lower it if the build runs out of RAM. |
 | `SKIP_SYNC=1` | Don't download updates, only rebuild. Much faster for a second build. |
+| `FINGERPRINT=1` | Build the fingerprint service in again (it's left out because the sensor doesn't work). |
 | `RESET=1` | Throw away all local changes in the patched projects first, so your tree is exactly what a fresh clone builds. |
 
 Example rebuild without syncing:
@@ -114,6 +115,7 @@ the synced sources (it's safe to run more than once):
 | 09 | LiveDisplay HAL only partly declared: boot stops on a black screen | Declared all three interfaces |
 | 10 | Screen density set twice (320, then 160): everything half size | Density 320 |
 | 11 | Setup asks to replace your recovery | Option hidden |
+| 12 | Fingerprint sensor doesn't work, setup still asks for it | Fingerprint left out of the build (`FINGERPRINT=1` to keep it) |
 
 ## Known limitations
 
@@ -121,6 +123,8 @@ the synced sources (it's safe to run more than once):
   only passes Android 11's SELinux checks with those checks disabled, which Android allows for
   userdebug builds only. A `user` build fails with ~120,000 neverallow errors. Official
   LineageOS builds are userdebug too; root over adb is off until you enable it in Developer options.
+- **No fingerprint.** The swipe sensor in the home button (Validity VFS61xx) doesn't work on 18.1
+  yet, so it's left out: no fingerprint step in setup, no fingerprint options in Settings.
 - **Signed with the public test keys.** LineageOS Trust warns about it. Builds signed with your
   own keys are possible (`sign_target_files_apks`), but need a factory reset when switching.
 - **Power menu covers the screen in black.** That's Android 11's full-screen power menu, not a bug.
