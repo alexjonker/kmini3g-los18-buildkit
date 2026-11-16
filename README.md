@@ -10,7 +10,7 @@ Unofficial. Not affiliated with LineageOS or Samsung. Flash at your own risk.
 
 | Works | Not tested yet |
 |-------|----------------|
-| Boot, display, touch, sound, setup wizard, camera | Bluetooth, GPS |
+| Boot, display, touch, sound, setup wizard, camera, Bluetooth | GPS |
 | Correct screen density, Wi-Fi | Calls / mobile data |
 | SELinux enforcing, Magisk (root) | IR blaster |
 | Fingerprint (swipe sensor, works but is picky) |
