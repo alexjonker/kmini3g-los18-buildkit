@@ -255,6 +255,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------------------------
+# Low-RAM mode (Android Go style memory handling) suits the 1.5 GB of RAM. LOWRAM=0 turns it off.
+if [ "${LOWRAM:-1}" = "1" ]; then
+  step "13 low-RAM mode: on (LOWRAM=0 to turn off)"
+  grep -q '^ro\.config\.low_ram=' $DEV/system.prop || printf '\n# Low-RAM mode\nro.config.low_ram=true\n' >> $DEV/system.prop
+  sed -i 's/^ro\.config\.low_ram=.*/ro.config.low_ram=true/' $DEV/system.prop
+else
+  step "13 low-RAM mode: off (LOWRAM=0)"
+  sed -i '/^# Low-RAM mode$/d; /^ro\.config\.low_ram=/d' $DEV/system.prop
+fi
+
+# ---------------------------------------------------------------------------------------------
 # a changed manifest is only picked up when the merged one is regenerated
 rm -rf $OUT/obj/ETC/vendor_manifest.xml_intermediates $OUT/system/vendor/etc/vintf/manifest.xml
 echo "== all fixes applied"
