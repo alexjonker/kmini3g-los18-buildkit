@@ -18,6 +18,10 @@ done
 step() { echo "== $*"; }
 
 # ---------------------------------------------------------------------------------------------
+step "00 BoardConfig: drop PRODUCT_SHIPPING_API_LEVEL (read-only there in Android 11; the official S3 Neo tree doesn't set it)"
+sed -i '/^# Shipping API Level$/d; /^PRODUCT_SHIPPING_API_LEVEL :=/d' $DEV/BoardConfig.mk
+
+# ---------------------------------------------------------------------------------------------
 step "01 init library: port libinit_kmini3g to Soong (like the official s3ve3gds 18.1 tree)"
 cat > $DEV/Android.bp <<'EOF'
 //
