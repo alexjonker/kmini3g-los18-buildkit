@@ -22,7 +22,7 @@ mkdir -p .repo/local_manifests
 cp /kit/kmini3g.xml .repo/local_manifests/kmini3g.xml
 
 if [ "${SKIP_SYNC:-0}" != "1" ]; then
-  echo "== repo sync (first time: ~100 GB download, takes hours)"
+  echo "== repo sync"
   repo sync -c -j"$JOBS" --force-sync --no-clone-bundle --no-tags
 fi
 

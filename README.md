@@ -20,7 +20,7 @@ Kernel: 3.4 (msm8226, LineageOS). Security patch level: 2024-02-05.
 
 - Linux PC (or Windows with WSL2) with Docker
 - 16 GB RAM or more (less works with fewer jobs, see below)
-- At least 250 GB free disk space (sources ~150 GB, build output, compiler cache)
+- At least 200 GB free disk space
 - The phone with a custom recovery (TWRP or LineageOS recovery)
 - A few hours for the first download and build
 
@@ -42,7 +42,7 @@ docker run --rm -it -v ./los18:/src -v ./los18-ccache:/ccache los18-builder
 
 The result is `./los18/out/target/product/kmini3g/lineage-18.1-<date>-UNOFFICIAL-kmini3g.zip`.
 
-The first run downloads about 100 GB. If the download or build stops (network, rate limits),
+The first run downloads about 85 GB. If the download or build stops (network, rate limits),
 just run the same command again: it continues where it stopped.
 
 ### Options
