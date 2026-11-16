@@ -242,6 +242,19 @@ cat > $OV <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------------------------------
+# The swipe sensor (Validity VFS61xx) doesn't work on 18.1 yet. Without the fingerprint service
+# and the android.hardware.fingerprint feature, Android sees no sensor: no fingerprint step in
+# the setup wizard and no fingerprint options in Settings. FINGERPRINT=1 builds it in again.
+FP_LINE='$(call inherit-product, device/samsung/kmini3g/fingerprint/product.mk)'
+if [ "${FINGERPRINT:-0}" = "1" ]; then
+  step "12 fingerprint: enabled (FINGERPRINT=1)"
+  sed -i "s|^#nofp# ||" $DEV/device.mk
+else
+  step "12 fingerprint: disabled (sensor doesn't work yet; FINGERPRINT=1 to build it in)"
+  sed -i "s|^\(\$(call inherit-product, device/samsung/kmini3g/fingerprint/product.mk)\)|#nofp# \1|" $DEV/device.mk
+fi
+
+# ---------------------------------------------------------------------------------------------
 # a changed manifest is only picked up when the merged one is regenerated
 rm -rf $OUT/obj/ETC/vendor_manifest.xml_intermediates $OUT/system/vendor/etc/vintf/manifest.xml
 echo "== all fixes applied"
