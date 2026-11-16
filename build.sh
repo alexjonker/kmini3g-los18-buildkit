@@ -5,7 +5,6 @@
 #   JOBS=n       parallel jobs (default: all CPU cores; use fewer if you run out of RAM)
 #   SKIP_SYNC=1  don't run "repo sync" (rebuild what you already have)
 #   LOWRAM=0     build without low-RAM mode
-#   FINGERPRINT=1  build the (not working) fingerprint service in
 #   RESET=1      throw away all local changes in the patched projects before applying the fixes
 #                (gets your tree back to exactly what a fresh clone of this kit builds)
 set -e

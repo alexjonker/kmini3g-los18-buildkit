@@ -8,11 +8,12 @@ Unofficial. Not affiliated with LineageOS or Samsung. Flash at your own risk.
 
 ## Status
 
-| Works | Not tested yet | Doesn't work |
+| Works | Not tested yet |
 |-------|----------------|--------------|
-| Boot, display, touch, sound, setup wizard, camera | Bluetooth, GPS | Fingerprint (disabled in the build, see below) |
-| Correct screen density, Wi-Fi | Calls / mobile data | |
-| SELinux enforcing, Magisk (root) | IR blaster | |
+| Boot, display, touch, sound, setup wizard, camera | Bluetooth, GPS |
+| Correct screen density, Wi-Fi | Calls / mobile data |
+| SELinux enforcing, Magisk (root) | IR blaster |
+| Fingerprint (swipe sensor, works but is picky) | |
 
 Kernel: 3.4 (msm8226, LineageOS). Security patch level: 2024-02-05.
 
@@ -54,7 +55,6 @@ Add these to the `docker run` command as `-e NAME=value`:
 | `JOBS=4` | Use 4 parallel jobs instead of all CPU cores. Lower it if the build runs out of RAM. |
 | `SKIP_SYNC=1` | Don't download updates, only rebuild. Much faster for a second build. |
 | `LOWRAM=0` | Build without low-RAM mode (it's on by default, which suits the 1.5 GB of RAM). |
-| `FINGERPRINT=1` | Build the fingerprint service in again (it's left out because the sensor doesn't work). |
 | `RESET=1` | Throw away all local changes in the patched projects (device, vendor, kernel) first, so your tree is exactly what a fresh clone builds. |
 
 Example rebuild without syncing:
@@ -105,6 +105,7 @@ the synced sources (it's safe to run more than once):
 
 | # | Problem | Fix |
 |---|---------|-----|
+| 00 | Shipping API level set in `BoardConfig.mk`, which Android 11 doesn't allow | Moved to `device.mk` like the S3 Neo (without it, ConfigStore is left out and boot hangs on the logo) |
 | 01 | init library uses the old Make build | Ported to Soong, like the official S3 Neo (s3ve3gds) tree |
 | 02 | fstab / init.target.rc in old locations | Moved to `/vendor`, `latemount` for `/data` |
 | 03 | Duplicate libraries break the build | Dropped prebuilt libfmjni, libprotobuf-cpp-lite, libtime_genoff |
@@ -116,7 +117,7 @@ the synced sources (it's safe to run more than once):
 | 09 | LiveDisplay HAL only partly declared: boot stops on a black screen | Declared all three interfaces |
 | 10 | Screen density set twice (320, then 160): everything half size | Density 320 |
 | 11 | Setup asks to replace your recovery | Option hidden |
-| 12 | Fingerprint sensor doesn't work, setup still asks for it | Fingerprint left out of the build (`FINGERPRINT=1` to keep it) |
+| 12 | Fingerprint HAL from Android 6/7: Android 11 waits forever, enrolling never starts; SELinux blocks the TrustZone app's storage; Settings says the sensor is on the back | HAL patched for Android 8+ (enumerate, remove and cancel events), SELinux rule for `qseecomd`, sensor location set to front |
 | 13 | 1.5 GB of RAM is tight for Android 11 | Low-RAM mode on (`LOWRAM=0` to turn off) |
 
 ## Known limitations
@@ -125,8 +126,8 @@ the synced sources (it's safe to run more than once):
   only passes Android 11's SELinux checks with those checks disabled, which Android allows for
   userdebug builds only. A `user` build fails with ~120,000 neverallow errors. Official
   LineageOS builds are userdebug too; root over adb is off until you enable it in Developer options.
-- **No fingerprint.** The swipe sensor in the home button (Validity VFS61xx) doesn't work on 18.1
-  yet, so it's left out: no fingerprint step in setup, no fingerprint options in Settings.
+- **Fingerprint is picky.** It's a swipe sensor in the home button: swipe flat and evenly from the
+  bottom of the screen over the button, without pressing. Several swipes get rejected while enrolling.
 - **Signed with the public test keys.** LineageOS Trust warns about it. Builds signed with your
   own keys are possible (`sign_target_files_apks`), but need a factory reset when switching.
 - **Power menu covers the screen in black.** That's Android 11's full-screen power menu, not a bug.

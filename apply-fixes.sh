@@ -19,6 +19,8 @@ step() { echo "== $*"; }
 
 # ---------------------------------------------------------------------------------------------
 step "00 shipping API level: move from BoardConfig.mk (read-only there in Android 11) to device.mk, like the S3 Neo"
+# Without it the build treats the phone as an Android 11 launch device and leaves out legacy
+# services such as ConfigStore: surfaceflinger then waits forever and boot hangs on the logo.
 sed -i '/^# Shipping API Level$/d; /^PRODUCT_SHIPPING_API_LEVEL :=/d' $DEV/BoardConfig.mk
 grep -q 'product_launched_with_k.mk' $DEV/device.mk || \
   printf '\n# Shipping API level (launched with Android 4.4)\n$(call inherit-product, $(SRC_TARGET_DIR)/product/product_launched_with_k.mk)\n' >> $DEV/device.mk
@@ -248,17 +250,110 @@ cat > $OV <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------------------------------
-# The swipe sensor (Validity VFS61xx) doesn't work on 18.1 yet. Without the fingerprint service
-# and the android.hardware.fingerprint feature, Android sees no sensor: no fingerprint step in
-# the setup wizard and no fingerprint options in Settings. FINGERPRINT=1 builds it in again.
-FP_LINE='$(call inherit-product, device/samsung/kmini3g/fingerprint/product.mk)'
-if [ "${FINGERPRINT:-0}" = "1" ]; then
-  step "12 fingerprint: enabled (FINGERPRINT=1)"
-  sed -i "s|^#nofp# ||" $DEV/device.mk
-else
-  step "12 fingerprint: disabled (sensor doesn't work yet; FINGERPRINT=1 to build it in)"
-  sed -i "s|^\(\$(call inherit-product, device/samsung/kmini3g/fingerprint/product.mk)\)|#nofp# \1|" $DEV/device.mk
-fi
+# Fingerprint (Validity VFS61xx swipe sensor in the home button), patched for Android 11.
+# the sensor is in the home button: Settings should say "front", not "back of your phone"
+SOV=$DEV/overlay-lineage/packages/apps/Settings/res/values/config.xml
+mkdir -p "$(dirname $SOV)"
+cat > $SOV <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- fingerprint sensor location: 0 = back, 1 = front (home button), 2 = left, 3 = right -->
+    <integer name="config_fingerprintSensorLocation">1</integer>
+</resources>
+EOF
+step "12 fingerprint: HAL patched for Android 11, SELinux rule, sensor on the front"
+  sed -i "s|^#nofp# ||" $DEV/device.mk   # undo the old "fingerprint off" edit in existing trees
+  sed -i 's/^#define LOG_NDEBUG 0$/#define LOG_NDEBUG 1/' $DEV/fingerprint/*.c   # undo old debug logging edit
+  # qseecomd stores the TrustZone app's data on /data and has to open /data itself
+  grep -qs "system_data_root_file" $DEV/sepolicy/common/tee.te || \
+    printf '\n# fingerprint TrustZone app: qseecomd opens /data for its file service\nallow tee system_data_root_file:dir r_dir_perms;\n' >> $DEV/sepolicy/common/tee.te
+  # log the TrustZone return codes when a command fails (the HAL only printed "error")
+  sed -i -E 's/ALOGE\("(send EnrollBegin error|%s:send vfmEnrollAddImage error|Send vfmEnrollFinish error|Send vfmPayloadBind error|Send vfmEnrollmentPasswordSet error)"(, __FUNCTION__)?\);/ALOGE("\1 (ret=%d result=%d)"\2, ret, resp->result);/' $DEV/fingerprint/fingerprint_tz.c
+  # The HAL predates Android 8: enumerate() only returns a count and removal events carry no
+  # "remaining" count. Android 11's FingerprintService runs an enumerate cleanup at every boot and
+  # waits for the "0 remaining" event forever, so enrolling never starts.
+  python3 - $DEV/fingerprint/fingerprint.c <<'EOF'
+import sys, re
+p = sys.argv[1]; s = open(p).read()
+if "kmini3g: Android 8+ enumerate" not in s:
+    new_enum = '''static int fingerprint_enumerate(struct fingerprint_device *device) {
+    /* kmini3g: Android 8+ enumerate: one TEMPLATE_ENUMERATING event per finger, the last one
+     * with remaining_templates = 0 (or a single empty event if nothing is enrolled). */
+    ALOGV("----------------> %s ----------------->", __FUNCTION__);
+    if (device == NULL) {
+        ALOGE("Cannot enumerate saved fingerprints with uninitialized params");
+        return -1;
+    }
+
+    vcs_fingerprint_device_t* vdev = (vcs_fingerprint_device_t*)device;
+    fingerprint_msg_t msg;
+    int idx, remaining;
+
+    pthread_mutex_lock(&vdev->lock);
+    remaining = vcs_get_enrolled_finger_num();
+    if (remaining == 0) {
+        memset(&msg, 0, sizeof(msg));
+        msg.type = FINGERPRINT_TEMPLATE_ENUMERATING;
+        msg.data.enumerated.finger.gid = vdev->active_gid;
+        msg.data.enumerated.finger.fid = 0;
+        msg.data.enumerated.remaining_templates = 0;
+        if (vdev->device.notify) vdev->device.notify(&msg);
+    } else {
+        for (idx = 1; idx <= MAX_NUM_FINGERS; idx++) {
+            if (!tz.finger[idx].exist) continue;
+            remaining--;
+            memset(&msg, 0, sizeof(msg));
+            msg.type = FINGERPRINT_TEMPLATE_ENUMERATING;
+            msg.data.enumerated.finger.gid = vdev->active_gid;
+            msg.data.enumerated.finger.fid = idx;
+            msg.data.enumerated.remaining_templates = remaining;
+            if (vdev->device.notify) vdev->device.notify(&msg);
+        }
+    }
+    pthread_mutex_unlock(&vdev->lock);
+
+    return 0;
+}
+'''
+    s, n = re.subn(r'static int fingerprint_enumerate\(struct fingerprint_device \*device\) \{.*?\n\}\n', new_enum, s, count=1, flags=re.S)
+    if n != 1: sys.exit("fingerprint.c: enumerate() not found")
+
+    old_rm = '''    fingerprint_msg_t msg;
+    msg.type = FINGERPRINT_TEMPLATE_REMOVED;
+    msg.data.removed.finger.fid = fid;
+'''
+    new_rm = '''    fingerprint_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.type = FINGERPRINT_TEMPLATE_REMOVED;
+    msg.data.removed.finger.gid = vdev->active_gid;
+    msg.data.removed.finger.fid = fid;
+    msg.data.removed.remaining_templates = vcs_get_enrolled_finger_num(); /* kmini3g: Android 8+ */
+'''
+    if s.count(old_rm) != 1: sys.exit("fingerprint.c: send_remove_notice() not as expected")
+    s = s.replace(old_rm, new_rm)
+
+    old_all = '''    if (fid == 0) {
+        // Delete all fingerprints
+'''
+    new_all = '''    if (fid == 0) {
+        // Delete all fingerprints
+        if (vcs_get_enrolled_finger_num() == 0)
+            send_remove_notice(vdev, 0); /* kmini3g: Android 8+ expects an event even when empty */
+'''
+    if s.count(old_all) != 1: sys.exit("fingerprint.c: remove() not as expected")
+    s = s.replace(old_all, new_all)
+    open(p, "w").write(s)
+
+if "kmini3g: Android 8+ cancel" not in s:
+    # cancel() must confirm with FINGERPRINT_ERROR_CANCELED; Settings waits for it before it
+    # moves from "locate the sensor" to the actual enrollment screen
+    m = re.search(r'static int fingerprint_cancel\(struct fingerprint_device \*device\) \{.*?\n    return ret;\n\}\n', s, flags=re.S)
+    if not m: sys.exit("fingerprint.c: cancel() not as expected")
+    body = m.group(0).replace("\n    return ret;\n}\n",
+        "\n    send_error_notice(vdev, FINGERPRINT_ERROR_CANCELED); /* kmini3g: Android 8+ cancel */\n\n    return ret;\n}\n")
+    s = s[:m.start()] + body + s[m.end():]
+    open(p, "w").write(s)
+EOF
 
 # ---------------------------------------------------------------------------------------------
 # Low-RAM mode (Android Go style memory handling) suits the 1.5 GB of RAM. LOWRAM=0 turns it off.
