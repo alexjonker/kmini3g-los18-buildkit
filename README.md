@@ -9,11 +9,11 @@ Unofficial. Not affiliated with LineageOS or Samsung. Flash at your own risk.
 ## Status
 
 | Works | Not tested yet |
-|-------|----------------|--------------|
+|-------|----------------|
 | Boot, display, touch, sound, setup wizard, camera | Bluetooth, GPS |
 | Correct screen density, Wi-Fi | Calls / mobile data |
 | SELinux enforcing, Magisk (root) | IR blaster |
-| Fingerprint (swipe sensor, works but is picky) | |
+| Fingerprint (swipe sensor, works but is picky) |
 
 Kernel: 3.4 (msm8226, LineageOS). Security patch level: 2024-02-05.
 
