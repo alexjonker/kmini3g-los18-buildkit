@@ -18,8 +18,10 @@ done
 step() { echo "== $*"; }
 
 # ---------------------------------------------------------------------------------------------
-step "00 BoardConfig: drop PRODUCT_SHIPPING_API_LEVEL (read-only there in Android 11; the official S3 Neo tree doesn't set it)"
+step "00 shipping API level: move from BoardConfig.mk (read-only there in Android 11) to device.mk, like the S3 Neo"
 sed -i '/^# Shipping API Level$/d; /^PRODUCT_SHIPPING_API_LEVEL :=/d' $DEV/BoardConfig.mk
+grep -q 'product_launched_with_k.mk' $DEV/device.mk || \
+  printf '\n# Shipping API level (launched with Android 4.4)\n$(call inherit-product, $(SRC_TARGET_DIR)/product/product_launched_with_k.mk)\n' >> $DEV/device.mk
 
 # ---------------------------------------------------------------------------------------------
 step "01 init library: port libinit_kmini3g to Soong (like the official s3ve3gds 18.1 tree)"
