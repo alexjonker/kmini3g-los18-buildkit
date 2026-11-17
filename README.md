@@ -32,6 +32,7 @@ git clone https://github.com/alexjonker/kmini3g-los18-buildkit
 cd kmini3g-los18-buildkit
 
 # 1. build the container image (once, and again after you change one of the scripts)
+# If you get an error in this step just run the command again.
 docker build -t los18-builder .
 
 # 2. folders for the source tree and the compiler cache
