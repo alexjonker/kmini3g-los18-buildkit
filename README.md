@@ -43,7 +43,7 @@ docker run --rm -it -v ./los18:/src -v ./los18-ccache:/ccache los18-builder
 
 The result is `./los18/out/target/product/kmini3g/lineage-18.1-<date>-UNOFFICIAL-kmini3g.zip`.
 
-The first run downloads about 100 GB. If the download or build stops (network, rate limits),
+The first run downloads about 85 GB. If the download or build stops (network, rate limits),
 just run the same command again: it continues where it stopped.
 
 ### Options
@@ -121,6 +121,8 @@ the synced sources (it's safe to run more than once):
 | 13 | 1.5 GB of RAM is tight for Android 11 | Low-RAM mode on (`LOWRAM=0` to turn off) |
 | 14 | SELinux blocks the motion sensor's sysfs files: no accelerometer data, auto-rotate doesn't work | Label the motion sensor and sensor input folders on any bus (msm8226-common only covers some); set the sensor's permissions in `early-boot`, before the sensor service starts (otherwise its firmware upload fails on some boots) |
 | 15 | No app store | F-Droid preinstalled: the build downloads the latest APK from f-droid.org. F-Droid updates itself after that |
+| 16 | Samsung's modem library calls `strdup8to16`, which Android 11 removed: the radio service crashes every 5 seconds | Shim library that adds the function back for `libsec-ril` |
+| 17 | GPS finds nothing: the GPS backend needs `libdsi_netctrl.so`, which the kmini3g blobs lack | Take `libdsi_netctrl.so` and `libqdi.so` from the S3 Neo blobs (same Qualcomm generation) |
 
 ## Known limitations
 

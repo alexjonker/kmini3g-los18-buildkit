@@ -420,9 +420,97 @@ LOCAL_SRC_FILES := FDroid.apk
 LOCAL_MODULE_SUFFIX := .apk
 LOCAL_CERTIFICATE := PRESIGNED
 LOCAL_DEX_PREOPT := false
+# install the APK byte-for-byte: re-aligning or uncompressing it would break its v2/v3 signature
+LOCAL_REPLACE_PREBUILT_APK_INSTALLED := $(LOCAL_PATH)/FDroid.apk
 include $(BUILD_PREBUILT)
 EOF
 grep -q '^    FDroid$' $DEV/device.mk || printf '\n# F-Droid\nPRODUCT_PACKAGES += \\\n    FDroid\n' >> $DEV/device.mk
+
+# ---------------------------------------------------------------------------------------------
+step "16 RIL shim: add strdup8to16/strdup16to8 for Samsung's libsec-ril (rild crashed every 5 s)"
+# Android 11's libcutils no longer has these; the kmini3g RIL blobs still call them.
+SH=$DEV/libshim_secril
+mkdir -p $SH
+cat > $SH/Android.mk <<'EOF'
+LOCAL_PATH := $(call my-dir)
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := strdup16.c
+LOCAL_MODULE := libshim_secril
+LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
+LOCAL_MULTILIB := 32
+include $(BUILD_SHARED_LIBRARY)
+EOF
+cat > $SH/strdup16.c <<'EOF'
+/* strdup8to16 / strdup16to8, removed from libcutils, still used by Samsung's libsec-ril */
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef uint16_t char16_t_;
+
+/* UTF-8 -> UTF-16. *out_len = number of UTF-16 units (no terminator). */
+char16_t_ *strdup8to16(const char *s, size_t *out_len) {
+    if (s == NULL) return NULL;
+    size_t n = strlen(s);
+    char16_t_ *out = malloc((n + 1) * 2 * sizeof(char16_t_));
+    if (out == NULL) return NULL;
+    const unsigned char *p = (const unsigned char *)s, *end = p + n;
+    size_t o = 0;
+    while (p < end) {
+        uint32_t c = *p++;
+        int extra = 0;
+        if (c >= 0xF0) { c &= 0x07; extra = 3; }
+        else if (c >= 0xE0) { c &= 0x0F; extra = 2; }
+        else if (c >= 0xC0) { c &= 0x1F; extra = 1; }
+        else if (c >= 0x80) { c = 0xFFFD; }
+        while (extra-- > 0 && p < end && (*p & 0xC0) == 0x80) c = (c << 6) | (*p++ & 0x3F);
+        if (c > 0xFFFF) {
+            c -= 0x10000;
+            out[o++] = (char16_t_)(0xD800 | (c >> 10));
+            out[o++] = (char16_t_)(0xDC00 | (c & 0x3FF));
+        } else {
+            out[o++] = (char16_t_)c;
+        }
+    }
+    out[o] = 0;
+    if (out_len) *out_len = o;
+    return out;
+}
+
+/* UTF-16 -> UTF-8, NUL-terminated. */
+char *strdup16to8(const char16_t_ *s, size_t len) {
+    if (s == NULL) return NULL;
+    char *out = malloc(len * 3 + 1);
+    if (out == NULL) return NULL;
+    size_t o = 0;
+    for (size_t i = 0; i < len; i++) {
+        uint32_t c = s[i];
+        if (c >= 0xD800 && c < 0xDC00 && i + 1 < len && s[i + 1] >= 0xDC00 && s[i + 1] < 0xE000) {
+            c = 0x10000 + ((c - 0xD800) << 10) + (s[++i] - 0xDC00);
+        }
+        if (c < 0x80) out[o++] = (char)c;
+        else if (c < 0x800) { out[o++] = 0xC0 | (c >> 6); out[o++] = 0x80 | (c & 0x3F); }
+        else if (c < 0x10000) { out[o++] = 0xE0 | (c >> 12); out[o++] = 0x80 | ((c >> 6) & 0x3F); out[o++] = 0x80 | (c & 0x3F); }
+        else { out[o++] = 0xF0 | (c >> 18); out[o++] = 0x80 | ((c >> 12) & 0x3F); out[o++] = 0x80 | ((c >> 6) & 0x3F); out[o++] = 0x80 | (c & 0x3F); }
+    }
+    out[o] = 0;
+    return out;
+}
+EOF
+grep -q 'libsec-ril.so|libshim_secril.so' $DEV/BoardConfig.mk || printf '\n# RIL shim (strdup8to16)\nTARGET_LD_SHIM_LIBS += \\\n    /system/vendor/lib/libsec-ril.so|libshim_secril.so \\\n    /system/vendor/lib/libsec-ril-dsds.so|libshim_secril.so\n' >> $DEV/BoardConfig.mk
+grep -q '^    libshim_secril$' $DEV/device.mk || printf '\n# RIL shim\nPRODUCT_PACKAGES += \\\n    libshim_secril\n' >> $DEV/device.mk
+
+# ---------------------------------------------------------------------------------------------
+step "17 GPS: add libdsi_netctrl + libqdi from the S3 Neo blobs (GPS backend couldn't load without them)"
+# libloc_api_v02 -> libloc_ds_api -> libdsi_netctrl (-> libqdi). The kmini3g blobs lack the last
+# two, so the GPS backend fails to load and every GPS request goes to an empty default.
+S3B=vendor/samsung/s3ve3g-common/proprietary/vendor/lib
+for f in libdsi_netctrl.so libqdi.so; do
+  [ -f $SRC/$S3B/$f ] || { echo "missing $S3B/$f (repo sync incomplete?)"; exit 1; }
+  grep -q "$S3B/$f" $DEV/device.mk || \
+    printf '\n# GPS data-service blob from the S3 Neo\nPRODUCT_COPY_FILES += \\\n    %s/%s:$(TARGET_COPY_OUT_VENDOR)/lib/%s\n' "$S3B" "$f" "$f" >> $DEV/device.mk
+done
 
 # ---------------------------------------------------------------------------------------------
 # a changed manifest is only picked up when the merged one is regenerated
