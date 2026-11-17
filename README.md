@@ -119,7 +119,7 @@ the synced sources (it's safe to run more than once):
 | 11 | Setup asks to replace your recovery | Option hidden |
 | 12 | Fingerprint HAL from Android 6/7: Android 11 waits forever, enrolling never starts; SELinux blocks the TrustZone app's storage; Settings says the sensor is on the back | HAL patched for Android 8+ (enumerate, remove and cancel events), SELinux rule for `qseecomd`, sensor location set to front |
 | 13 | 1.5 GB of RAM is tight for Android 11 | Low-RAM mode on (`LOWRAM=0` to turn off) |
-| 14 | SELinux blocks the motion sensor's sysfs files: no accelerometer data, auto-rotate doesn't work | Label the motion sensor and sensor input folders on any bus (msm8226-common only covers some) |
+| 14 | SELinux blocks the motion sensor's sysfs files: no accelerometer data, auto-rotate doesn't work | Label the motion sensor and sensor input folders on any bus (msm8226-common only covers some); set the sensor's permissions in `early-boot`, before the sensor service starts (otherwise its firmware upload fails on some boots) |
 
 ## Known limitations
 

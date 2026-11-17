@@ -373,6 +373,28 @@ step "14 sensors: label the motion sensor's sysfs folder (SELinux blocked it, so
 FC=$DEV/sepolicy/common/file_contexts
 grep -q '^/sys/devices/\.\*/iio' $FC || \
   printf '\n# motion sensor (MPU6515) via IIO, on any bus\n/sys/devices/.*/iio:device[0-9](/.*)?    u:object_r:sysfs_iio:s0\n' >> $FC
+# init.target.rc hands the sensor's sysfs files (incl. dmp_firmware) to "system" in "on boot", but
+# the sensor HAL (class hal) is started by init.rc's own "on boot", which runs first. On some
+# boots the HAL then can't upload the motion sensor's firmware (firmware_loaded stays 0) and
+# auto-rotate gets no data. Move those lines to "on early-boot", which always runs before.
+python3 - $DEV/rootdir/etc/init.target.rc <<'EOF'
+import sys
+p = sys.argv[1]; lines = open(p).read().split("\n")
+if "# kmini3g: sensor permissions before the sensor HAL starts" in lines:
+    sys.exit()
+out, moved, sec = [], [], None
+for l in lines:
+    if l.startswith("on "):
+        sec = l.strip()
+    if sec == "on boot" and "iio" in l and l.strip():
+        moved.append(l)
+    else:
+        out.append(l)
+if not moved:
+    sys.exit("init.target.rc: no iio lines found in 'on boot'")
+out += ["", "# kmini3g: sensor permissions before the sensor HAL starts", "on early-boot"] + moved + [""]
+open(p, "w").write("\n".join(out))
+EOF
 # same for the sensors' input devices (magnetometer etc.), which msm8226-common only labels on some buses
 grep -q '^/sys/devices/\.\*/input/input' $FC || \
   printf '/sys/devices/.*/input/input[0-9]+(/.*)?   u:object_r:sysfs_input:s0\n' >> $FC
