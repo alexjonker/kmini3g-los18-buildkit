@@ -367,6 +367,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------------------------
+step "14 sensors: label the motion sensor's sysfs folder (SELinux blocked it, so auto-rotate had no data)"
+# msm8226-common only labels IIO devices on an SPI bus; the S5 mini's MPU6515 sits elsewhere, so
+# its sysfs files stay plain "sysfs" and the sensor HAL may not read them.
+FC=$DEV/sepolicy/common/file_contexts
+grep -q '^/sys/devices/\.\*/iio' $FC || \
+  printf '\n# motion sensor (MPU6515) via IIO, on any bus\n/sys/devices/.*/iio:device[0-9](/.*)?    u:object_r:sysfs_iio:s0\n' >> $FC
+# same for the sensors' input devices (magnetometer etc.), which msm8226-common only labels on some buses
+grep -q '^/sys/devices/\.\*/input/input' $FC || \
+  printf '/sys/devices/.*/input/input[0-9]+(/.*)?   u:object_r:sysfs_input:s0\n' >> $FC
+
+# ---------------------------------------------------------------------------------------------
 # a changed manifest is only picked up when the merged one is regenerated
 rm -rf $OUT/obj/ETC/vendor_manifest.xml_intermediates $OUT/system/vendor/etc/vintf/manifest.xml
 echo "== all fixes applied"
