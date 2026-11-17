@@ -43,7 +43,7 @@ docker run --rm -it -v ./los18:/src -v ./los18-ccache:/ccache los18-builder
 
 The result is `./los18/out/target/product/kmini3g/lineage-18.1-<date>-UNOFFICIAL-kmini3g.zip`.
 
-The first run downloads about 85 GB. If the download or build stops (network, rate limits),
+The first run downloads about 100 GB. If the download or build stops (network, rate limits),
 just run the same command again: it continues where it stopped.
 
 ### Options
