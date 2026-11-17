@@ -400,6 +400,31 @@ grep -q '^/sys/devices/\.\*/input/input' $FC || \
   printf '/sys/devices/.*/input/input[0-9]+(/.*)?   u:object_r:sysfs_input:s0\n' >> $FC
 
 # ---------------------------------------------------------------------------------------------
+step "15 F-Droid preinstalled (latest APK from f-droid.org)"
+# must be one folder below the device tree: its Android.mk only includes */Android.mk
+FD=$DEV/FDroid
+[ -s $DEV/prebuilt/FDroid/FDroid.apk ] && [ ! -s $FD/FDroid.apk ] && mkdir -p $FD && mv $DEV/prebuilt/FDroid/FDroid.apk $FD/
+rm -rf $DEV/prebuilt/FDroid; rmdir $DEV/prebuilt 2>/dev/null || true
+mkdir -p $FD
+if [ ! -s $FD/FDroid.apk ]; then
+  curl -fsSL --retry 3 -o $FD/FDroid.apk.tmp https://f-droid.org/F-Droid.apk || { echo "F-Droid download failed"; exit 1; }
+  mv -f $FD/FDroid.apk.tmp $FD/FDroid.apk
+fi
+cat > $FD/Android.mk <<'EOF'
+LOCAL_PATH := $(call my-dir)
+include $(CLEAR_VARS)
+LOCAL_MODULE := FDroid
+LOCAL_MODULE_CLASS := APPS
+LOCAL_MODULE_TAGS := optional
+LOCAL_SRC_FILES := FDroid.apk
+LOCAL_MODULE_SUFFIX := .apk
+LOCAL_CERTIFICATE := PRESIGNED
+LOCAL_DEX_PREOPT := false
+include $(BUILD_PREBUILT)
+EOF
+grep -q '^    FDroid$' $DEV/device.mk || printf '\n# F-Droid\nPRODUCT_PACKAGES += \\\n    FDroid\n' >> $DEV/device.mk
+
+# ---------------------------------------------------------------------------------------------
 # a changed manifest is only picked up when the merged one is regenerated
 rm -rf $OUT/obj/ETC/vendor_manifest.xml_intermediates $OUT/system/vendor/etc/vintf/manifest.xml
 echo "== all fixes applied"
