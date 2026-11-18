@@ -31,7 +31,7 @@ if [ "${RESET:-0}" = "1" ]; then
 fi
 
 # A changed manifest is only picked up when the merged one is regenerated
-rm -rf ~/src/out/target/product/kmini3g/obj/ETC/vendor_manifest.xml_intermediates ~/src/out/target/product/kmini3g/system/vendor/etc/vintf/manifest.xml
+rm -rf /src/out/target/product/kmini3g/obj/ETC/vendor_manifest.xml_intermediates /src/out/target/product/kmini3g/system/vendor/etc/vintf/manifest.xml
 
 echo "== build"
 source build/envsetup.sh
