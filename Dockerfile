@@ -13,5 +13,5 @@ RUN git config --global user.name "kmini3g builder" && git config --global user.
     && git config --global color.ui false && git lfs install
 ENV USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache CCACHE_DIR=/ccache
 WORKDIR /src
-COPY kmini3g.xml build.sh apply-fixes.sh /kit/
+COPY kmini3g.xml build.sh /kit/
 CMD ["/bin/bash", "/kit/build.sh"]

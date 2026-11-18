@@ -4,8 +4,7 @@
 # Options (docker run -e NAME=value):
 #   JOBS=n       parallel jobs (default: all CPU cores; use fewer if you run out of RAM)
 #   SKIP_SYNC=1  don't run "repo sync" (rebuild what you already have)
-#   LOWRAM=0     build without low-RAM mode
-#   RESET=1      throw away all local changes in the patched projects before applying the fixes
+#   RESET=1      throw away all local changes in the forked projects (device, vendor, kernel)
 #                (gets your tree back to exactly what a fresh clone of this kit builds)
 set -e
 cd /src
@@ -31,8 +30,8 @@ if [ "${RESET:-0}" = "1" ]; then
     -c 'git reset -q --hard && git clean -fdq'
 fi
 
-echo "== apply kmini3g fixes"
-bash /kit/apply-fixes.sh
+# A changed manifest is only picked up when the merged one is regenerated
+rm -rf ~/src/out/target/product/kmini3g/obj/ETC/vendor_manifest.xml_intermediates ~/src/out/target/product/kmini3g/system/vendor/etc/vintf/manifest.xml
 
 echo "== build"
 source build/envsetup.sh

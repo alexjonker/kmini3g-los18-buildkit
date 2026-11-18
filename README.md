@@ -55,8 +55,7 @@ Add these to the `docker run` command as `-e NAME=value`:
 |--------|--------|
 | `JOBS=4` | Use 4 parallel jobs instead of all CPU cores. Lower it if the build runs out of RAM. |
 | `SKIP_SYNC=1` | Don't download updates, only rebuild. Much faster for a second build. |
-| `LOWRAM=0` | Build without low-RAM mode (it's on by default, which suits the 1.5 GB of RAM). |
-| `RESET=1` | Throw away all local changes in the patched projects (device, vendor, kernel) first, so your tree is exactly what a fresh clone builds. |
+| `RESET=1` | Throw away all local changes in the forked projects (device, vendor, kernel) first, so your tree is exactly what a fresh clone builds. |
 
 Example rebuild without syncing:
 
@@ -98,32 +97,6 @@ The first boot takes a few minutes. The ROM never replaces your recovery: the
 
 **Updates:** flash the new zip over the old one, no reset needed.
 If you use Magisk, flash or patch it again after every update.
-
-## What the fixes do
-
-The S3NEO device tree for lineage-18.1 doesn't build or boot as-is. `apply-fixes.sh` changes
-the synced sources (it's safe to run more than once):
-
-| # | Problem | Fix |
-|---|---------|-----|
-| 00 | Shipping API level set in `BoardConfig.mk`, which Android 11 doesn't allow | Moved to `device.mk` like the S3 Neo (without it, ConfigStore is left out and boot hangs on the logo) |
-| 01 | init library uses the old Make build | Ported to Soong, like the official S3 Neo (s3ve3gds) tree |
-| 02 | fstab / init.target.rc in old locations | Moved to `/vendor`, `latemount` for `/data` |
-| 03 | Duplicate libraries break the build | Dropped prebuilt libfmjni, libprotobuf-cpp-lite, libtime_genoff |
-| 04 | ril.h lacks a define 18.1 needs | Added `MAX_BROADCAST_SMS_CONFIG_INFO` |
-| 05 | recovery.img too big for its partition | XZ-compressed ramdisks |
-| 06 | Kernel config out of date | Aligned with the official S3 Neo 18.1 kernel (Wi-Fi as module, XZ, …) |
-| 07 | Fingerprint HAL declared twice: Android rejects the whole HAL manifest, boot hangs on the logo | Removed the duplicate declaration |
-| 08 | Old IR blaster library no longer exists: system_server crashes, "Can't load Android system" | Switched to the 18.1 Samsung IR service + SELinux rules |
-| 09 | LiveDisplay HAL only partly declared: boot stops on a black screen | Declared all three interfaces |
-| 10 | Screen density set twice (320, then 160): everything half size | Density 320 |
-| 11 | Setup asks to replace your recovery | Option hidden |
-| 12 | Fingerprint HAL from Android 6/7: Android 11 waits forever, enrolling never starts; SELinux blocks the TrustZone app's storage; Settings says the sensor is on the back | HAL patched for Android 8+ (enumerate, remove and cancel events), SELinux rule for `qseecomd`, sensor location set to front |
-| 13 | 1.5 GB of RAM is tight for Android 11 | Low-RAM mode on (`LOWRAM=0` to turn off) |
-| 14 | SELinux blocks the motion sensor's sysfs files: no accelerometer data, auto-rotate doesn't work | Label the motion sensor and sensor input folders on any bus (msm8226-common only covers some); set the sensor's permissions in `early-boot`, before the sensor service starts (otherwise its firmware upload fails on some boots) |
-| 15 | No app store | F-Droid preinstalled: the build downloads the latest APK from f-droid.org. F-Droid updates itself after that |
-| 16 | Samsung's modem library calls `strdup8to16`, which Android 11 removed: the radio service crashes every 5 seconds | Shim library that adds the function back for `libsec-ril` |
-| 17 | GPS finds nothing: the GPS backend needs `libdsi_netctrl.so`, which the kmini3g blobs lack | Take `libdsi_netctrl.so` and `libqdi.so` from the S3 Neo blobs (same Qualcomm generation) |
 
 ## Known limitations
 
